@@ -1,0 +1,13 @@
+name: Linting
+on: push
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out code
+        uses: actions/checkout@v4
+      - name: Mise setup
+        uses: jdx/mise-action@v2
+      - name: Mise lint
+        run: mise run lint
