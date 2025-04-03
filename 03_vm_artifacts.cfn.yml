@@ -1,0 +1,75 @@
+---
+AWSTemplateFormatVersion: 2010-09-09
+Description: Create VM Artifacts S3 bucket.
+
+Resources:
+  KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyPolicy:
+        Version: 2012-10-17
+        Id: key-artifacts3
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Join
+                - ""
+                - - "arn:aws-us-gov:iam::"
+                  - !Ref "AWS::AccountId"
+                  - ":root"
+            Action: "kms:*"
+            Resource: "*"
+
+  KMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/artifactss3
+      TargetKeyId:
+        Ref: KMSKey
+
+  ArtifactsS3Bucket:
+    Type: AWS::S3::Bucket
+    DeletionPolicy: Retain
+    UpdateReplacePolicy: Retain
+    Properties:
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              KMSMasterKeyID: !Sub "arn:aws-us-gov:kms:${AWS::Region}:${AWS::AccountId}:${KMSKeyAlias}"
+              SSEAlgorithm: "aws:kms"
+
+  ArtifactsBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref ArtifactsS3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Sid: AllowEC2Read
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action:
+              - s3:GetObject
+              - s3:ListBucket
+            Resource:
+              - !Sub arn:aws-us-gov:s3:::${ArtifactsS3Bucket}
+              - !Sub arn:aws-us-gov:s3:::${ArtifactsS3Bucket}/*
+          - Sid: AllowIAMUserWrite
+            Effect: Allow
+            Principal:
+              AWS: "*"
+            Action:
+              - s3:*
+            Resource: !Sub arn:aws-us-gov:s3:::${ArtifactsS3Bucket}/*
+            Condition:
+              StringEquals:
+                aws:PrincipalType: User
+              StringLike:
+                aws:PrincipalArn: !Sub arn:aws:iam::${AWS::AccountId}:user/*
