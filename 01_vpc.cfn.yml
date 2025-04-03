@@ -48,7 +48,7 @@ Resources:
         From: -1
         To: -1
       Protocol: -1
-      RuleAction: Deny
+      RuleAction: deny
       RuleNumber: 101
 
   ACLDenyEgressDefault:
@@ -61,7 +61,7 @@ Resources:
         From: -1
         To: -1
       Protocol: -1
-      RuleAction: Deny
+      RuleAction: deny
       RuleNumber: 101
 
   PublicSubnet1:
@@ -193,14 +193,10 @@ Resources:
         Ref: S3VPCFlowLogsKMSKey
 
   VPCFlowLogsS3Bucket:
-    DependsOn:
-      - S3VPCFlowLogsKMSKey
-      - S3VPCFlowLogsKMSKeyAlias
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      AccessControl: Private
       LifecycleConfiguration:
         Rules:
           - Id: DeleteRule

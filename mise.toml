@@ -1,6 +1,7 @@
 [tools]
 pipx = 'latest'
 "pipx:cfn-lint" = { version = "1.32.3" }
+"pipx:awscli" = { version = "latest" }
 
 [env]
 AWS_PROFILE = "gov-jwcc-dev"

@@ -114,14 +114,10 @@ Resources:
         Ref: S3CloudTrailKMSKey
 
   CloudTrailS3Bucket:
-    DependsOn:
-      - S3CloudTrailKMSKey
-      - S3CloudTrailKMSKeyAlias
     Type: AWS::S3::Bucket
     DeletionPolicy: Retain
     UpdateReplacePolicy: Retain
     Properties:
-      AccessControl: Private
       LifecycleConfiguration:
         Rules:
           - Id: DeleteRule
