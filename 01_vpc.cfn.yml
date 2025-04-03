@@ -228,7 +228,7 @@ Resources:
             Resource: !Sub "${VPCFlowLogsS3Bucket.Arn}/AWSLogs/${AWS::AccountId}/*"
             Condition:
               StringEquals:
-                "aws:SourceAccount": "${AWS::AccountId}"
+                "aws:SourceAccount": !Sub "${AWS::AccountId}"
           - Sid: AWSLogDeliveryAclCheck
             Effect: Allow
             Principal:
@@ -237,7 +237,7 @@ Resources:
             Resource: !GetAtt "VPCFlowLogsS3Bucket.Arn"
             Condition:
               StringEquals:
-                "aws:SourceAccount": "${AWS::AccountId}"
+                "aws:SourceAccount": !Sub "${AWS::AccountId}"
 
   FlowLogs:
     DependsOn: VPCFlowLogsBucketPolicy
