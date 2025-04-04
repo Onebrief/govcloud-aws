@@ -228,13 +228,16 @@ Resources:
             Resource: !Sub "${VPCFlowLogsS3Bucket.Arn}/AWSLogs/${AWS::AccountId}/*"
             Condition:
               StringEquals:
-                "s3:x-amz-acl": "bucket-owner-full-control"
+                "aws:SourceAccount": !Sub "${AWS::AccountId}"
           - Sid: AWSLogDeliveryAclCheck
             Effect: Allow
             Principal:
               Service: "delivery.logs.amazonaws.com"
             Action: "s3:GetBucketAcl"
             Resource: !GetAtt "VPCFlowLogsS3Bucket.Arn"
+            Condition:
+              StringEquals:
+                "aws:SourceAccount": !Sub "${AWS::AccountId}"
 
   FlowLogs:
     DependsOn: VPCFlowLogsBucketPolicy
@@ -245,3 +248,104 @@ Resources:
       ResourceId: !Ref VPC
       ResourceType: VPC
       TrafficType: ALL
+
+  # Private endpoint routing
+  EndpointSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for VPC Endpoints
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !FindInMap [CIDRMap, Private1, CIDR]
+          Description: Allow HTTPS traffic from within VPC
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !FindInMap [CIDRMap, Private1, CIDR]
+          Description: Allow HTTPS traffic from VPC endpoints
+      Tags:
+        - Key: Name
+          Value: !Sub ${AWS::StackName}-endpoint-sg
+
+  S3Endpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.s3
+      VpcEndpointType: Gateway
+      RouteTableIds:
+        - !Ref NatRouteTable1
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal: "*"
+            Action:
+              - "s3:*"
+            Resource: "*"
+
+  # SSM Endpoints
+  SSMEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssm
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  SSMMessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ssmmessages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  EC2MessagesEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.ec2messages
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  # CloudWatch Endpoints
+  CloudWatchEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.monitoring
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
+
+  CloudWatchLogsEndpoint:
+    Type: AWS::EC2::VPCEndpoint
+    Properties:
+      VpcId: !Ref VPC
+      ServiceName: !Sub com.amazonaws.${AWS::Region}.logs
+      VpcEndpointType: Interface
+      PrivateDnsEnabled: true
+      SubnetIds:
+        - !Ref PrivateSubnet1
+      SecurityGroupIds:
+        - !Ref EndpointSecurityGroup
