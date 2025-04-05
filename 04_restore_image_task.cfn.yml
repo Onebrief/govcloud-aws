@@ -1,0 +1,112 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "CloudFormation template to import an AMI."
+
+Parameters:
+  AmiId:
+    Type: String
+    Description: The ID of the source AMI to restore from
+    AllowedPattern: "^ami-[a-z0-9]+$"
+    ConstraintDescription: Must be a valid AMI ID starting with 'ami-'
+
+  ImageName:
+    Type: String
+    Description: Name for the restored image
+    Default: "Onebrief"
+
+  BucketName:
+    Type: String
+    Description: S3 bucket name where the AMI is stored
+
+Resources:
+  RestoreImageRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws-us-gov:iam::aws:policy/service-role/AWSLambdaBasicExecutionRole
+      Policies:
+        - PolicyName: RestoreImagePolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - ebs:CompleteSnapshot
+                  - ebs:GetSnapshotBlock
+                  - ebs:ListChangedBlocks
+                  - ebs:ListSnapshotBlocks
+                  - ebs:PutSnapshotBlock
+                  - ebs:StartSnapshot
+                  - ec2:CreateStoreImageTask
+                  - ec2:DescribeStoreImageTasks
+                  - ec2:CreateRestoreImageTask
+                  - ec2:GetEbsEncryptionByDefault
+                  - ec2:DescribeTags
+                  - ec2:CreateTags
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                Resource: !Sub "arn:aws-us-gov:s3:::${BucketName}/amis/${AmiId}.bin"
+              - Effect: Allow
+                Action:
+                  - s3:ListBucket
+                Resource: "*"
+              - Effect: Allow
+                Action:
+                  - kms:Decrypt
+                  - kms:GenerateDataKey
+                Resource: "*"
+
+  RestoreImageFunction:
+    Type: AWS::Lambda::Function
+    Properties:
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt RestoreImageRole.Arn
+      Timeout: 600
+      Code:
+        ZipFile: |
+          import boto3
+          import cfnresponse
+
+          ec2_client = boto3.client('ec2')
+
+          def handler(event, context):
+              if event['RequestType'] in ['Create', 'Update']:
+                  try:
+                      ami_id = event['ResourceProperties']['AmiId']
+                      name = event['ResourceProperties']['ImageName']
+                      bucket_name = event['ResourceProperties']['BucketName']
+                      response = ec2_client.create_restore_image_task(
+                          ObjectKey=f'amis/{ami_id}.bin',
+                          Bucket=bucket_name,
+                          Name=name,
+                      )
+                      cfnresponse.send(event, context, cfnresponse.SUCCESS, {'RestoredAmiId': response['ImageId']})
+                  except Exception as e:
+                      cfnresponse.send(event, context, cfnresponse.FAILED, {'Error': str(e)})
+              else:
+                  cfnresponse.send(event, context, cfnresponse.SUCCESS, {})
+      Environment:
+        Variables:
+          LOG_LEVEL: INFO
+
+  RestoreImageCustomResource:
+    Type: Custom::RestoreImage
+    Properties:
+      ServiceToken: !GetAtt RestoreImageFunction.Arn
+      AmiId: !Ref AmiId
+      ImageName: !Ref ImageName
+      BucketName: !Ref BucketName
+
+Outputs:
+  RestoredAmiId:
+    Description: The ID of the restored AMI
+    Value: !GetAtt RestoreImageCustomResource.RestoredAmiId
