@@ -12,6 +12,7 @@ lint = { run = "cfn-lint *.yml" }
 deploy-vpc-dev = { run = "aws cloudformation deploy --template-file 01_vpc.cfn.yml --stack-name jwcc-vpc --parameter-overrides AvailabilityZone1=us-gov-west-1a" }
 deploy-cloudtrail = { run = "aws cloudformation deploy --template-file 02_cloudtrail.cfn.yml --stack-name jwcc-cloudtrail" }
 deploy-vm-artifacts = { run = "aws cloudformation deploy --template-file 03_vm_artifacts.cfn.yml --stack-name jwcc-vm-artifacts" }
+import-ami-dev = { run = "aws cloudformation deploy --template-file 04_restore_image_task.cfn.yml --stack-name jwcc-ami-import --capabilities CAPABILITY_IAM" }
 
 [tasks.deploy-all]
 description = "Deploy all Cloudformation stacks."
