@@ -95,10 +95,10 @@ Resources:
     - "IngressRulesUser&{Cidr}":
         Type: AWS::EC2::SecurityGroupIngress
         Properties:
-          GroupId: !Ref UserSecurityGroup
-          IpProtocol: tcp
           FromPort: 443
           ToPort: 443
+          GroupId: !Ref UserSecurityGroup
+          IpProtocol: tcp
           CidrIp: !Ref Cidr
 
   MaintenanceSecurityGroup:
@@ -113,83 +113,83 @@ Resources:
     - "IngressRulesMaintenance&{Cidr}":
         Type: AWS::EC2::SecurityGroupIngress
         Properties:
-          GroupId: !Ref MaintenanceSecurityGroup
-          IpProtocol: tcp
           FromPort: 443
           ToPort: 443
+          GroupId: !Ref MaintenanceSecurityGroup
+          IpProtocol: tcp
           CidrIp: !Ref Cidr
 
   MaintenanceToEc2MaintenanceSide:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      DestinationSecurityGroupId: !Ref EC2SecurityGroup
       FromPort: 443
+      ToPort: 443
       GroupId: !Ref MaintenanceSecurityGroup
       IpProtocol: tcp
-      ToPort: 443
+      DestinationSecurityGroupId: !Ref EC2SecurityGroup
 
   MaintenanceToEc2Ec2Side:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      SourceSecurityGroupId: !Ref MaintenanceSecurityGroup
       FromPort: 443
       ToPort: 443
       GroupId: !Ref EC2SecurityGroup
       IpProtocol: tcp
+      SourceSecurityGroupId: !Ref MaintenanceSecurityGroup
 
   Ec2ToMaintenanceEc2Side:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      DestinationSecurityGroupId: !Ref MaintenanceSecurityGroup
       FromPort: 1025
       ToPort: 65535
       GroupId: !Ref EC2SecurityGroup
       IpProtocol: tcp
+      DestinationSecurityGroupId: !Ref MaintenanceSecurityGroup
 
   Ec2ToMaintenanceMaintenanceSide:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      SourceSecurityGroupId: !Ref EC2SecurityGroup
       FromPort: 1025
       ToPort: 65535
       GroupId: !Ref MaintenanceSecurityGroup
       IpProtocol: tcp
+      SourceSecurityGroupId: !Ref EC2SecurityGroup
 
   UserToEc2UserSide:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      DestinationSecurityGroupId: !Ref EC2SecurityGroup
       FromPort: 443
       ToPort: 443
       GroupId: !Ref UserSecurityGroup
       IpProtocol: tcp
+      DestinationSecurityGroupId: !Ref EC2SecurityGroup
 
   UserToEc2Ec2Side:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      SourceSecurityGroupId: !Ref UserSecurityGroup
       FromPort: 443
       ToPort: 443
       GroupId: !Ref EC2SecurityGroup
       IpProtocol: tcp
+      SourceSecurityGroupId: !Ref UserSecurityGroup
 
   Ec2ToUserEc2Side:
     Type: AWS::EC2::SecurityGroupEgress
     Properties:
-      DestinationSecurityGroupId: !Ref UserSecurityGroup
       FromPort: 1025
       ToPort: 65535
       GroupId: !Ref EC2SecurityGroup
       IpProtocol: tcp
+      DestinationSecurityGroupId: !Ref UserSecurityGroup
 
   Ec2ToUserUserSide:
     Type: AWS::EC2::SecurityGroupIngress
     Properties:
-      SourceSecurityGroupId: !Ref EC2SecurityGroup
       FromPort: 1025
       ToPort: 65535
       GroupId: !Ref UserSecurityGroup
       IpProtocol: tcp
+      SourceSecurityGroupId: !Ref EC2SecurityGroup
 
   EC2SecurityGroup:
     Type: AWS::EC2::SecurityGroup
