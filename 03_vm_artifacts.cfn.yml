@@ -73,3 +73,12 @@ Resources:
                 aws:PrincipalType: User
               StringLike:
                 aws:PrincipalArn: !Sub arn:aws:iam::${AWS::AccountId}:user/*
+
+  BucketArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /jwcc/deployment/artifacts_bucket_name
+      Type: String
+      Value: !Ref ArtifactsS3Bucket
+      Description: The S3 bucket ARN for use where needed.
+      Tier: Standard

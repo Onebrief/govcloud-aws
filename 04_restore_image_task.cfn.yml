@@ -14,7 +14,8 @@ Parameters:
     Default: "Onebrief"
 
   BucketName:
-    Type: String
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /jwcc/deployment/artifacts_bucket_name
     Description: S3 bucket name where the AMI is stored
 
 Resources:
@@ -105,6 +106,15 @@ Resources:
       AmiId: !Ref AmiId
       ImageName: !Ref ImageName
       BucketName: !Ref BucketName
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /jwcc/deployment/latest_ami_id
+      Type: String
+      Value: !GetAtt RestoreImageCustomResource.RestoredAmiId
+      Description: The most recent AMI we have imported.
+      Tier: Standard
 
 Outputs:
   RestoredAmiId:

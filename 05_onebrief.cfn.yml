@@ -1,0 +1,295 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Transform: "AWS::LanguageExtensions"
+Description: "Create the EC2 AMI/load balancers."
+
+Parameters:
+  VpcId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::VPC::Id>
+    Default: /jwcc/deployment/vpc
+    Description: VPC where resources will be deployed
+
+  PublicSubnet:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /jwcc/deployment/public_subnet
+    Description: Public subnet for the load balancers
+
+  PrivateSubnet:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Subnet::Id>
+    Default: /jwcc/deployment/private_subnet
+    Description: Private subnet for the EC2 instance
+
+  PrivateSubnetCidr:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /jwcc/deployment/private_subnet_cidr
+    Description: CIDR range for the private subnet.
+
+  MaintenanceLBIngressCIDRs:
+    Type: CommaDelimitedList
+    Description: CIDR block for maintenance load balancer ingress
+    Default: "0.0.0.0/0"
+
+  UsersLBIngressCIDRs:
+    Type: CommaDelimitedList
+    Description: CIDR block for users load balancer ingress
+    Default: "0.0.0.0/0"
+
+  InstanceType:
+    Type: String
+    Default: t2.xlarge
+    Description: EC2 instance type
+
+  LatestAmiId:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /jwcc/deployment/latest_ami_id
+    Description: The latest Onebrief AMI ID.
+
+  BucketName:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /jwcc/deployment/artifacts_bucket_name
+    Description: S3 bucket where artifacts will be placed.
+
+Resources:
+  EC2Role:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+            Action: sts:AssumeRole
+      ManagedPolicyArns:
+        - arn:aws-us-gov:iam::aws:policy/AmazonSSMManagedInstanceCore
+        - arn:aws-us-gov:iam::aws:policy/CloudWatchAgentServerPolicy
+      Policies:
+        - PolicyName: S3ReadAccess
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - s3:GetObject
+                  - s3:ListBucket
+                  - s3:GetBucketLocation
+                Resource:
+                  - !Sub "arn:aws-us-gov:s3:::${BucketName}"
+                  - !Sub "arn:aws-us-gov:s3:::${BucketName}/*"
+
+  EC2InstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      Roles:
+        - !Ref EC2Role
+
+  UserSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for User facing load balancer.
+      VpcId: !Ref VpcId
+
+  "Fn::ForEach::IngressRulesUser":
+    - Cidr
+    - !Ref UsersLBIngressCIDRs
+    - "IngressRulesUser&{Cidr}":
+        Type: AWS::EC2::SecurityGroupIngress
+        Properties:
+          GroupId: !Ref UserSecurityGroup
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref Cidr
+
+  MaintenanceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for maintenace facing load balancer.
+      VpcId: !Ref VpcId
+
+  "Fn::ForEach::IngressRulesMaintenance":
+    - Cidr
+    - !Ref MaintenanceLBIngressCIDRs
+    - "IngressRulesMaintenance&{Cidr}":
+        Type: AWS::EC2::SecurityGroupIngress
+        Properties:
+          GroupId: !Ref MaintenanceSecurityGroup
+          IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref Cidr
+
+  MaintenanceToEc2MaintenanceSide:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      DestinationSecurityGroupId: !Ref EC2SecurityGroup
+      FromPort: 443
+      GroupId: !Ref MaintenanceSecurityGroup
+      IpProtocol: tcp
+      ToPort: 443
+
+  MaintenanceToEc2Ec2Side:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      SourceSecurityGroupId: !Ref MaintenanceSecurityGroup
+      FromPort: 443
+      ToPort: 443
+      GroupId: !Ref EC2SecurityGroup
+      IpProtocol: tcp
+
+  Ec2ToMaintenanceEc2Side:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      DestinationSecurityGroupId: !Ref MaintenanceSecurityGroup
+      FromPort: 1025
+      ToPort: 65535
+      GroupId: !Ref EC2SecurityGroup
+      IpProtocol: tcp
+
+  Ec2ToMaintenanceMaintenanceSide:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      SourceSecurityGroupId: !Ref EC2SecurityGroup
+      FromPort: 1025
+      ToPort: 65535
+      GroupId: !Ref MaintenanceSecurityGroup
+      IpProtocol: tcp
+
+  UserToEc2UserSide:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      DestinationSecurityGroupId: !Ref EC2SecurityGroup
+      FromPort: 443
+      ToPort: 443
+      GroupId: !Ref UserSecurityGroup
+      IpProtocol: tcp
+
+  UserToEc2Ec2Side:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      SourceSecurityGroupId: !Ref UserSecurityGroup
+      FromPort: 443
+      ToPort: 443
+      GroupId: !Ref EC2SecurityGroup
+      IpProtocol: tcp
+
+  Ec2ToUserEc2Side:
+    Type: AWS::EC2::SecurityGroupEgress
+    Properties:
+      DestinationSecurityGroupId: !Ref UserSecurityGroup
+      FromPort: 1025
+      ToPort: 65535
+      GroupId: !Ref EC2SecurityGroup
+      IpProtocol: tcp
+
+  Ec2ToUserUserSide:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      SourceSecurityGroupId: !Ref EC2SecurityGroup
+      FromPort: 1025
+      ToPort: 65535
+      GroupId: !Ref UserSecurityGroup
+      IpProtocol: tcp
+
+  EC2SecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Security group for EC2 instance
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 1025
+          ToPort: 65535
+          CidrIp: !Ref PrivateSubnetCidr
+          Description: Allow HTTPS response traffic from VPC endpoints
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: 443
+          ToPort: 443
+          CidrIp: !Ref PrivateSubnetCidr
+          Description: Allow HTTPS traffic to VPC endpoints
+
+  EC2Instance:
+    Type: AWS::EC2::Instance
+    Properties:
+      InstanceType: !Ref InstanceType
+      ImageId: !Ref LatestAmiId
+      SubnetId: !Ref PrivateSubnet
+      SecurityGroupIds:
+        - !Ref EC2SecurityGroup
+      IamInstanceProfile: !Ref EC2InstanceProfile
+      Tags:
+        - Key: Name
+          Value: Onebrief
+
+  MaintenanceTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckProtocol: TCP
+      Port: 443
+      Protocol: TCP
+      TargetType: instance
+      VpcId: !Ref VpcId
+      Targets:
+        - Id: !Ref EC2Instance
+          Port: 443
+
+  UsersTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      HealthCheckProtocol: TCP
+      Port: 443
+      Protocol: TCP
+      TargetType: instance
+      VpcId: !Ref VpcId
+      Targets:
+        - Id: !Ref EC2Instance
+          Port: 443
+
+  MaintenanceLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: maintenance
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref MaintenanceSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet
+      Type: network
+      LoadBalancerAttributes:
+        - Key: load_balancing.cross_zone.enabled
+          Value: true
+
+  UsersLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: users
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref UserSecurityGroup
+      Subnets:
+        - !Ref PublicSubnet
+      Type: network
+      LoadBalancerAttributes:
+        - Key: load_balancing.cross_zone.enabled
+          Value: true
+
+  MaintenanceListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref MaintenanceTargetGroup
+      LoadBalancerArn: !Ref MaintenanceLoadBalancer
+      Port: 443
+      Protocol: TCP
+
+  UsersListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref UsersTargetGroup
+      LoadBalancerArn: !Ref UsersLoadBalancer
+      Port: 443
+      Protocol: TCP
