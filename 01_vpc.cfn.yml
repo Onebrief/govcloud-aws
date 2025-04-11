@@ -307,6 +307,15 @@ Resources:
         - Key: Name
           Value: !Sub ${AWS::StackName}-endpoint-sg
 
+  EndpointSecurityGroupSsm:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /jwcc/deployment/endpoint_security_group
+      Type: String
+      Value: !Ref EndpointSecurityGroup
+      Description: The endpoint security group.
+      Tier: Standard
+
   S3Endpoint:
     Type: AWS::EC2::VPCEndpoint
     Properties:
