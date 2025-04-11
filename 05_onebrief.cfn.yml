@@ -24,6 +24,11 @@ Parameters:
     Default: /jwcc/deployment/private_subnet_cidr
     Description: CIDR range for the private subnet.
 
+  EndpointSecurityGroupId:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /jwcc/deployment/endpoint_security_group
+    Description: The endpoint security group.
+
   MaintenanceLBIngressCIDRs:
     Type: CommaDelimitedList
     Description: CIDR block for maintenance load balancer ingress
@@ -204,10 +209,30 @@ Resources:
           Description: Allow HTTPS response traffic from VPC endpoints
       SecurityGroupEgress:
         - IpProtocol: tcp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 169.254.169.253/32
+          Description: Allow DNS
+        - IpProtocol: udp
+          FromPort: 53
+          ToPort: 53
+          CidrIp: 169.254.169.253/32
+          Description: Allow DNS
+        # - IpProtocol: tcp
+        #   FromPort: 443
+        #   ToPort: 443
+        #   DestinationSecurityGroupId: !Ref EndpointSecurityGroupId
+        #   Description: Allow the EC2 instance to talk to the VPC endpoints.
+        - IpProtocol: tcp
           FromPort: 443
           ToPort: 443
           CidrIp: !Ref PrivateSubnetCidr
           Description: Allow HTTPS traffic to VPC endpoints
+        # - IpProtocol: tcp
+        #   FromPort: 1025
+        #   ToPort: 65535
+        #   CidrIp: 0.0.0.0/0
+        #   Description: Allow all lb resp traffic
 
   EC2Instance:
     Type: AWS::EC2::Instance
