@@ -1,0 +1,55 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: Backup all EBS volumes tagged with backup=true
+
+Resources:
+  DLMRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: dlm.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: DLMCustomPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Action:
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSnapshots
+                  - ec2:DescribeInstances
+                  - ec2:DeleteSnapshot
+                  - ec2:CreateSnapshots
+                  - ec2:CreateSnapshot
+                Effect: Allow
+                Resource: "*"
+              - Action: ec2:CreateTags
+                Effect: Allow
+                Resource: "arn:aws-us-gov:ec2:*::snapshot/*"
+
+  DLMLifecyclePolicy:
+    Type: AWS::DLM::LifecyclePolicy
+    Properties:
+      Description: Nightly snapshots of volumes tagged for backup
+      State: ENABLED
+      ExecutionRoleArn: !GetAtt DLMRole.Arn
+      PolicyDetails:
+        ResourceTypes:
+          - VOLUME
+        TargetTags:
+          - Key: backup
+            Value: "true"
+        Schedules:
+          - Name: NightlyBackups
+            CreateRule:
+              Interval: 24
+              IntervalUnit: HOURS
+              Times:
+                - "01:00"
+            RetainRule:
+              Count: 14
+            CopyTags: true
