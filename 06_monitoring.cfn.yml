@@ -1,0 +1,27 @@
+---
+AWSTemplateFormatVersion: "2010-09-09"
+Description: IAM user with read-only access to CloudWatch and store credentials in SSM
+
+Resources:
+  CWReadOnlyUser:
+    Type: AWS::IAM::User
+    Properties:
+      UserName: CWReadOnlyUser
+      ManagedPolicyArns:
+        - arn:aws-us-gov:iam::aws:policy/CloudWatchReadOnlyAccess
+  CWUserAccessKey:
+    Type: AWS::IAM::AccessKey
+    Properties:
+      UserName: !Ref CWReadOnlyUser
+  SecretKeySecret:
+    Type: AWS::SecretsManager::Secret
+    Properties:
+      Name: /jwcc/deployment/cw_user
+      Description: "Access and Secret keys for CloudWatch Read-Only User"
+      SecretString: !Join
+        - ""
+        - - '{"AccessKey":"'
+          - !Ref CWUserAccessKey
+          - '","SecretKey":"'
+          - !GetAtt CWUserAccessKey.SecretAccessKey
+          - '"}'
