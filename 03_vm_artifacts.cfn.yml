@@ -82,3 +82,12 @@ Resources:
       Value: !Ref ArtifactsS3Bucket
       Description: The S3 bucket ARN for use where needed.
       Tier: Standard
+
+  KmsArn:
+    Type: AWS::SSM::Parameter
+    Properties:
+      Name: /jwcc/deployment/fips_kms_key
+      Type: String
+      Value: !Ref KMSKeyAlias
+      Description: The KMS ARN for use where needed.
+      Tier: Standard
