@@ -14,6 +14,9 @@ deploy-cloudtrail = { run = "aws cloudformation deploy --template-file 02_cloudt
 deploy-vm-artifacts = { run = "aws cloudformation deploy --template-file 03_vm_artifacts.cfn.yml --stack-name jwcc-vm-artifacts" }
 import-ami-dev = { run = "aws cloudformation deploy --template-file 04_restore_image_task.cfn.yml --stack-name jwcc-ami-import --capabilities CAPABILITY_IAM" }
 deploy-onebrief-dev = { run = "aws cloudformation deploy --template-file 05_onebrief.cfn.yml --stack-name jwcc-onebrief --capabilities CAPABILITY_IAM" }
+deploy-monitoring = { run = "aws cloudformation deploy --template-file 06_monitoring.cfn.yml --stack-name jwcc-monitoring --capabilities CAPABILITY_NAMED_IAM" }
+deploy-disaster-recovery = { run = "aws cloudformation deploy --template-file 07_dlm.cfn.yml --stack-name jwcc-disaster-recovery --capabilities CAPABILITY_NAMED_IAM" }
+
 
 [tasks.deploy-all]
 description = "Deploy all Cloudformation stacks."
