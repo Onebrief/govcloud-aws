@@ -11,4 +11,4 @@ You will need to have your AWS config setup similar to [here](https://github.com
 
 ## Importing an AMI
 
-If you want to import an AMI, first upload your AMI export to the artifacts S3 bucket in the `amis` folder. You can then run the command: `mise run import-ami-dev -- --parameter-overrides BucketName=jwcc-vm-artifacts-artifactss3bucket-kycsbnnkbvqd AmiId=ami-0257f58967e2e2d18`. The AMI id will be in the stack outputs.
+If you want to import an AMI, first upload your AMI export to the artifacts S3 bucket in the `amis` folder. You can then run the command: `mise run import-ami-dev -- --parameter-overrides AmiId=ami-0257f58967e2e2d18`. The AMI id will be in the stack outputs.
