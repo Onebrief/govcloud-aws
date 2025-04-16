@@ -236,6 +236,10 @@ Resources:
       Tags:
         - Key: Name
           Value: Onebrief
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          usermod --lock --expiredate 1 ec2-user
 
   MaintenanceTargetGroup:
     Type: AWS::ElasticLoadBalancingV2::TargetGroup
