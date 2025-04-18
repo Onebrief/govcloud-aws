@@ -54,6 +54,11 @@ Parameters:
     Default: /jwcc/deployment/artifacts_bucket_name
     Description: S3 bucket where artifacts will be placed.
 
+  KmsArn:
+    Type: AWS::SSM::Parameter::Value<String>
+    Default: /jwcc/deployment/fips_kms_key
+    Description: The KMS ARN for use where needed.
+
 Resources:
   EC2Role:
     Type: AWS::IAM::Role
@@ -233,9 +238,79 @@ Resources:
       SecurityGroupIds:
         - !Ref EC2SecurityGroup
       IamInstanceProfile: !Ref EC2InstanceProfile
+      PropagateTagsToVolumeOnCreation: true
       Tags:
         - Key: Name
           Value: Onebrief
+        - Key: backup
+          Value: "true"
+      BlockDeviceMappings:
+        - DeviceName: "/dev/sda1" # mount: /
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "60"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdb" # mount: /data
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "2000"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdc" # mount: /mapdata
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "500"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdd" # mount: /monitoring
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "200"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvde" # mount: /containerd
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "100"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdf" # mount: /backups
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "5000"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdg" # mount: /home
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "15"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdh" # mount: /var
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "50"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdi" # mount: /var/log
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "25"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdj" # mount: /var/log/audit
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "25"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
+        - DeviceName: "/dev/xvdk" # mount: /var/tmp
+          Ebs:
+            DeleteOnTermination: "false"
+            VolumeSize: "10"
+            Encrypted: true
+            KmsKeyId: !Ref KmsArn
       UserData:
         Fn::Base64: !Sub |
           #!/bin/bash
