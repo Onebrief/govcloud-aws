@@ -1,11 +1,14 @@
 ## What is the motivation behind this PR?
 
-<!-- how does this benefit our customers or dev team? -->
+<!-- What problem existed before this PR? -->
+<!-- How does this benefit our customers or dev team? -->
 
 ## Summary of changes
 
-<!-- give a helpful summary of changes for the reviewer -->
+<!-- How does this PR fix the above problem statement -->
+<!-- Give a helpful summary of changes for the reviewer -->
 
-## Author reminders
-- [ ] Reviewed my own PR
-- [ ] Updated documentation, if applicable
+## How to Test
+
+<!-- How does the reviewer validate the problem existed before -->
+<!-- and is now resolved after -->
